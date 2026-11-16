@@ -1026,7 +1026,6 @@ class Checker:
         # only the following can access class scoped variables (since classes
         # aren't really a scope)
         # - direct accesses (not within a nested scope)
-        # - generators
         # - type annotations (for generics, etc.)
         can_access_class_vars = None
         importStarred = None
@@ -1041,9 +1040,8 @@ class Checker:
                 if name == '__class__':
                     return
                 elif can_access_class_vars is False:
-                    # only generators used in a class scope can access the
-                    # names of the class. this is skipped during the first
-                    # iteration
+                    # Functions and comprehension bodies cannot access class
+                    # variables. Direct accesses use the first iteration.
                     continue
 
             binding = scope.get(name, None)
@@ -1083,9 +1081,7 @@ class Checker:
             importStarred = importStarred or scope.importStarred
 
             if can_access_class_vars is not False:
-                can_access_class_vars = isinstance(
-                    scope, (TypeScope, ComprehensionScope),
-                )
+                can_access_class_vars = isinstance(scope, TypeScope)
 
         if importStarred:
             from_list = []

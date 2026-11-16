@@ -754,6 +754,77 @@ class Test(TestCase):
             Z = (x for x in (a for a in T))
         ''')
 
+    def test_class_comprehension_result_cannot_access_class_names(self):
+        for expression in (
+                '[value for item in items]',
+                '{value for item in items}',
+                '{item: value for item in items}',
+                '{value: item for item in items}',
+                '(value for item in items)',
+        ):
+            with self.subTest(expression=expression):
+                self.flakes(f'''
+                class A:
+                    value = 1
+                    items = [1, 2]
+                    result = {expression}
+                ''', m.UndefinedName)
+
+    def test_class_comprehension_filter_cannot_access_class_names(self):
+        for expression in (
+                '[item for item in items if limit]',
+                '{item for item in items if limit}',
+                '{item: item for item in items if limit}',
+                '(item for item in items if limit)',
+        ):
+            with self.subTest(expression=expression):
+                self.flakes(f'''
+                class A:
+                    limit = 1
+                    items = [1, 2]
+                    result = {expression}
+                ''', m.UndefinedName)
+
+    def test_class_comprehension_later_iterable_cannot_access_class_names(self):
+        for expression in (
+                '[i * j for i in a for j in b]',
+                '{i * j for i in a for j in b}',
+                '{i: j for i in a for j in b}',
+                '(i * j for i in a for j in b)',
+        ):
+            with self.subTest(expression=expression):
+                self.flakes(f'''
+                class A:
+                    a = [1, 2, 3]
+                    b = [1, 2, 3]
+                    result = {expression}
+                ''', m.UndefinedName)
+
+    def test_class_comprehension_uses_global_name(self):
+        self.flakes('''
+        value = 0
+        class A:
+            value = 1
+            result = [value for item in range(2)]
+        ''')
+
+    def test_class_comprehension_uses_enclosing_function_name(self):
+        self.flakes('''
+        def f():
+            value = 1
+            class A:
+                value = 2
+                result = [value for item in range(2)]
+            return A
+        ''')
+
+    def test_class_comprehension_nested_iterable_cannot_access_class_names(self):
+        self.flakes('''
+        class A:
+            items = [1, 2]
+            result = [[item for item in items] for unused in range(2)]
+        ''', m.UndefinedName)
+
     def test_undefinedInLoop(self):
         """
         The loop variable is defined after the expression is computed.
